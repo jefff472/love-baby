@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Para Tamara ❤️</title>
+  
+  <style>
+    /* Estilos base */
+    html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+    #galaxy-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+    
+    /* PANTALLA DE BIENVENIDA (El truco para el audio) */
+    #welcome-screen {
+        position: fixed; inset: 0; 
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 9999; transition: opacity 1s ease-out;
+    }
+    #welcome-screen h1 {
+        color: white; font-size: 2.5rem; margin-bottom: 20px;
+        text-shadow: 0 0 10px #ff69b4; text-align: center;
+    }
+    #start-btn {
+        padding: 15px 40px; font-size: 1.2rem; background: #ff3366; 
+        color: white; border: none; border-radius: 50px; cursor: pointer;
+        box-shadow: 0 0 20px rgba(255, 51, 102, 0.6); animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.05);} 100%{transform:scale(1);} }
+
+    /* Reproductor flotante (ahora oculto al inicio) */
+    .player{
+      position:fixed; left:10px; right:10px; bottom:20px;
+      display:none; /* Se muestra después */
+      gap:10px; align-items:center; justify-content: center;
+      background:rgba(20,15,35,.6); 
+      border:1px solid rgba(255,255,255,.2); 
+      border-radius:15px; padding:10px 15px;
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      color:#fff; z-index: 100;
+      max-width: 400px; margin: 0 auto;
+    }
+    .player button {
+      padding:10px 15px; border-radius:8px; border:none; background:rgba(255,255,255,.2); color:#fff; cursor:pointer;
+    }
+    .pill{
+      position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      padding:8px 16px; border-radius:50px;
+      background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.3);
+      color:#fff; font-size:14px; z-index: 100;
+      display: none; /* Se muestra después */
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+<!-- PANTALLA DE BIENVENIDA -->
+<div id="welcome-screen">
+    <h1>Para mi hermosa Tamara 💌</h1>
+    <button id="start-btn">✨ Abrir Sorpresa ✨</button>
+</div>
+
+<!-- Lienzo 3D -->
+<canvas id="galaxy-canvas"></canvas>
+
+<!-- Mensaje Principal -->
+<div class="pill">✨ Te Amo Infinito, Mi Pinchecha ✨</div>
+
+<!-- Reproductor de Música -->
+<div class="player" id="player-box">
+  <button id="playBtn">⏸︎</button> <!-- Empieza en pausa icon porque suena solo -->
+  <span style="flex:1; text-align:center; font-size:12px;">🎶 Para ti mi reina</span>
+</div>
+
+<!-- AUDIO (Asegúrate que tu archivo se llame 'cancion.mp3') -->
+<audio id="audio" loop>
+    <source src="nuevacancion.mp3" type="audio/mpeg">
+</audio>
+
+
+<script>
+// ====== LÓGICA DE INICIO AUTOMÁTICO ======
+const startBtn = document.getElementById('start-btn');
+const welcomeScreen = document.getElementById('welcome-screen');
+const audio = document.getElementById('audio');
+const playerBox = document.getElementById('player-box');
+const pill = document.querySelector('.pill');
+const playBtn = document.getElementById('playBtn');
+
+startBtn.addEventListener('click', () => {
+    // 1. Reproducir audio (¡Ahora sí funciona porque hubo clic!)
+    audio.play().then(() => {
+        console.log("Audio reproduciendo...");
+    }).catch(e => {
+        console.log("Error audio:", e);
+        alert("Toca la pantalla para activar el sonido 🔊");
+    });
+
+    // 2. Ocultar bienvenida
+    welcomeScreen.style.opacity = '0';
+    setTimeout(() => {
+        welcomeScreen.style.display = 'none';
+        playerBox.style.display = 'flex'; // Mostrar controles
+        pill.style.display = 'block';     // Mostrar mensaje
+        initGalaxy(); // Iniciar animación 3D
+    }, 1000);
+});
+
+playBtn.onclick = () => {
+    if(audio.paused) { audio.play(); playBtn.textContent='⏸︎'; }
+    else { audio.pause(); playBtn.textContent='▶︎'; }
+};
+
+// ====== THREE.JS GALAXY (Se inicia después del clic) ======
+function initGalaxy() {
+    try {
+        const canvas = document.getElementById('galaxy-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; 
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 10; controls.maxDistance = 220;
+        
+        // Ajustar cámara
+        const isMobile = window.innerWidth < 768;
+        camera.position.set(0, isMobile? 30 : 25, isMobile? 120 : 80);
+        controls.update();
+
+        // Estrellas fondo
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(3000*3);
+        for(let i=0; i<3000*3; i++) starPos[i] = (Math.random()-0.5)*800;
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+        scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size:0.6})));
+
+        // PALABRAS (Galaxia)
+        const phrases = ["Tamara ❤️", "Mi Amor ✨", "Pinchecha 🥰", "Mi Vida", "Te Amo", "Mi Luz 🌟", "Hermosa", "Mi Cielito 🌌", "Por Siempre", "Mi Universo", "Juntos 💫", "Mi Paz", "Eres Todo", "Mi Reina 👑"];
+        const galaxy = new THREE.Group(); scene.add(galaxy);
+        
+        function makeTextTexture(text){
+            const c=document.createElement('canvas'); c.width=512; c.height=128;
+            const g=c.getContext('2d'); 
+            g.font='bold 40px Arial'; g.textAlign='center'; g.textBaseline='middle';
+            g.fillStyle='#FFD1DC'; g.shadowColor='rgba(255,100,150,0.8)'; g.shadowBlur=15;
+            g.fillText(text, c.width/2, c.height/2);
+            return new THREE.CanvasTexture(c);
+        }
+
+        for(let i=0; i<150; i++){ 
+            const tex = makeTextTexture(phrases[i % phrases.length]);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true }));
+            const angle = (i / 150) * Math.PI * 2 * 3;
+            const dist = (i / 150) * 90;
+            sprite.position.set(Math.cos(angle)*dist, (Math.random()-0.5)*15, Math.sin(angle)*dist);
+            sprite.scale.set(18, 4.5, 1);
+            galaxy.add(sprite);
+        }
+
+        // Loop
+        function animate(){
+            requestAnimationFrame(animate);
+            galaxy.rotation.y += 0.0005;
+            controls.update();
+            renderer.render(scene, camera);
+        } animate();
+        
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+    } catch(e) { console.log("Error 3D", e); }
+}
+</script>
+</body>
+</html>
